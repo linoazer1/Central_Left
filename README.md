@@ -1,5 +1,7 @@
 # PDF Accessibility Solutions
 
+# Austin Smith was here in VS Code
+
 This repository provides two complementary solutions for PDF accessibility:
 
 1. **PDF-to-PDF Remediation**: Processes PDFs and maintains the PDF format while improving accessibility.
