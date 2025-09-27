@@ -1,5 +1,7 @@
 # PDF Processing AWS Infrastructure
 
+# Austin was here in VS Code
+
 This project builds an AWS infrastructure using AWS CDK (Cloud Development Kit) to split a PDF into chunks, process the chunks via AWS Step Functions, and merge the resulting chunks back using ECS tasks. The infrastructure also includes monitoring via CloudWatch dashboards and metrics for tracking progress.
 
 ## Prerequisites
