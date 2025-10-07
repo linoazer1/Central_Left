@@ -1,7 +1,7 @@
 """
 This AWS Lambda function is triggered by an S3 event when a PDF file is uploaded to a specified S3 bucket. 
 The function performs the following operations:
-
+0. Testing Code Deployment - Central_Left Austin Smith
 1. Downloads the PDF file from S3.
 2. Splits the PDF into chunks of specified page size (for example, one page per chunk).
 3. Uploads each PDF chunk to a temporary location in the same S3 bucket.
