@@ -89,29 +89,28 @@ deploy_backend_solution() {
         fi
         
         # Set up Adobe credentials in Secrets Manager
-        print_status "🔒 Setting up Adobe API credentials in AWS Secrets Manager..."
-        
-        JSON_TEMPLATE='{
-          "client_credentials": {
-            "PDF_SERVICES_CLIENT_ID": "<Your client ID here>",
-            "PDF_SERVICES_CLIENT_SECRET": "<Your secret ID here>"
-          }
-        }'
+         print_status "🔒 Setting up Adobe API credentials in AWS Secrets Manager..."
 
-        echo "$JSON_TEMPLATE" | jq --arg cid "$ADOBE_CLIENT_ID" --arg csec "$ADOBE_CLIENT_SECRET" \
-            '.client_credentials.PDF_SERVICES_CLIENT_ID = $cid | 
-             .client_credentials.PDF_SERVICES_CLIENT_SECRET = $csec' > client_credentials.json
+	SECRET_STRING=$(jq -n \
+	  --arg cid "$ADOBE_CLIENT_ID" \
+ 	 --arg csec "$ADOBE_CLIENT_SECRET" \
+ 	 '{client_credentials: {PDF_SERVICES_CLIENT_ID: $cid, PDF_SERVICES_CLIENT_SECRET: $csec}}')
+   
+	# Close secrets vulnerability 
+	if aws secretsmanager create-secret \ --name /myapp/client_credentials \
+	 --description "Client credentials for PDF services" \
+   	 --secret-string "$SECRET_STRING" 2>/dev/null; then
+   	 print_success "   ✅ Secret created successfully in Secrets Manager!"
+	else
+   	 aws secretsmanager update-secret \
+        	--secret-id /myapp/client_credentials \
+       		 --description "Updated client credentials for PDF services" \
+       		  --secret-string "$SECRET_STRING"
+   	 print_success "   ✅ Secret updated successfully in Secrets Manager!"
+	fi
 
-        if aws secretsmanager create-secret --name /myapp/client_credentials --description "Client credentials for PDF services" --secret-string file://client_credentials.json 2>/dev/null; then
-            print_success "   ✅ Secret created successfully in Secrets Manager!"
-        else
-            aws secretsmanager update-secret --secret-id /myapp/client_credentials --description "Updated client credentials for PDF services" --secret-string file://client_credentials.json
-            print_success "   ✅ Secret updated successfully in Secrets Manager!"
-        fi
+	echo ""
         
-        # Clean up temporary file
-        rm -f client_credentials.json
-        echo ""
         
     elif [ "$DEPLOYMENT_TYPE" == "pdf2html" ]; then
         print_status "🧠 PDF-to-HTML specific configuration..."
