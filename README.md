@@ -1,184 +1,171 @@
-# PDF Accessibility Solutions
+# PDF Processing AWS Infrastructure
 
-This repository provides two complementary solutions for PDF accessibility:
+# Austin was here in VS Code
 
-1. **PDF-to-PDF Remediation**: Processes PDFs and maintains the PDF format while improving accessibility.
-2. **PDF-to-HTML Remediation**: Converts PDFs to accessible HTML format.
+This project builds an AWS infrastructure using AWS CDK (Cloud Development Kit) to split a PDF into chunks, process the chunks via AWS Step Functions, and merge the resulting chunks back using ECS tasks. The infrastructure also includes monitoring via CloudWatch dashboards and metrics for tracking progress.
 
-Both solutions leverage AWS services and generative AI to improve content accessibility according to WCAG 2.1 Level AA standards.
+## Prerequisites
 
-## Table of Contents
+Before running the AWS CDK stack, ensure the following are installed and configured:
 
-| Index | Description |
-|-------|-------------|
-| [Architecture Overview](#architecture-overview) | High level overview illustrating component interactions |
-| [Automated One Click Deployment](#automated-one-click-deployment) | How to deploy the project |
-| [Testing Your PDF Accessibility Solution](#testing-your-pdf-accessibility-solution) | User guide for the working solution |
-| [PDF-to-PDF Remediation Solution](#pdf-to-pdf-remediation-solution) | PDF format preservation solution details |
-| [PDF-to-HTML Remediation Solution](#pdf-to-html-remediation-solution) | HTML conversion solution details |
-| [Monitoring](#monitoring) | System monitoring and observability |
-| [Troubleshooting](#troubleshooting) | Common issues and solutions |
-| [Contributing](#contributing) | How to contribute to the project |
+1. **AWS Bedrock Access**: Ensure your AWS account has access to the Nova pro model in Amazon Bedrock.
+   - [Request access to Amazon Bedrock](https://console.aws.amazon.com/bedrock/) through the AWS console if not already enabled.
 
-## Architecture Overview
+2. **Adobe API Access** - An enterprise-level contract or a trial account (For Testing) for Adobe's API is required.
 
-The following architecture diagram illustrates the various AWS components utilized to deliver the solution.
+   - [Adobe PDF Services API](https://acrobatservices.adobe.com/dc-integration-creation-app-cdn/main.html) to obtain API credentials.
+   
+4. **Python (3.7 or later)**  
+   - [Download Python](https://www.python.org/downloads/)  
+   - [Set up a virtual environment](https://docs.python.org/3/library/venv.html)  
+     ```bash
+     python -m venv .venv
+     source .venv/bin/activate  # For macOS/Linux
+     .venv\Scripts\activate     # For Windows
+     ```
+   - Also ensure that if you are using windows to confirm the python path in cmd before deploying. That can be done by running:
+     ```bash
+     where python
+     ```
 
-![Architecture Diagram](docs/images/architecture.png)
+5. **AWS CLI**: To interact with AWS services and set up credentials.
 
-## Automated One Click Deployment
+   - [Install AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
+     
+6. **npm**  
+   - npm is required to install AWS CDK. Install npm by installing Node.js:  
+     - [Download Node.js](https://nodejs.org/) (includes npm).  
+   - Verify npm installation:  
+     ```bash
+     npm --version
+     ```
+7. **AWS CDK**: For defining cloud infrastructure in code.
+   - [Install AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html)  
+     ```bash
+     npm install -g aws-cdk
+     ```
 
-We provide a **unified deployment script** that allows you to deploy either or both the solutions with a single command. Choose your preferred solution during deployment:
+8. **Docker**: Required to build and run Docker images for the ECS tasks.  
+   - [Install Docker](https://docs.docker.com/get-docker/)  
+   - Verify installation:  
+     ```bash
+     docker --version
+     ```
 
-### Prerequisites
+9. **AWS Account Permissions**  
+   - Ensure permissions to create and manage AWS resources like S3, Lambda, ECS, ECR, Step Functions, and CloudWatch.  
+   - [AWS IAM Policies and Permissions](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html)
+   - Also, For the ease of deployment. Create a IAM user in the account you want to deploy to and attach adminstrator access to that user and use the Access key and Secret key for that user.
 
-**Common Requirements:**
-1. **AWS Account** with appropriate permissions to create and manage AWS resources
-   - See [IAM Permissions Guide](docs/IAM_PERMISSIONS.md) for detailed permission requirements
-2. **AWS CloudShell access** (AWS CLI is pre-installed and configured automatically)
-   - Sign in to the AWS Management Console
-   - In the top navigation bar, click the CloudShell icon (terminal symbol) next to the search bar
-   - Wait for CloudShell to initialize (this may take a few moments on first use)
-3. **Enable AWS Bedrock Nova-Pro model** in your AWS account (For PDF to PDF remediation)  
-   **Enable AWS Bedrock Nova-Lite model** in your AWS account (For PDF to HTML remediation)
-   - [Request access to Amazon Bedrock](https://console.aws.amazon.com/bedrock/) through the AWS console if not already enabled
-   - Navigate to the AWS Bedrock console
-   - Click "Model access" in the left navigation pane
-   - Click "Manage model access"
-   - Find Nova-Pro/Nova-Lite in the list and select the checkbox
-   - Click "Save changes" and wait for access to be granted
+## Directory Structure
 
-**Solution-Specific Requirements:**
-- **PDF-to-PDF**: 
-  - **Adobe API Access** - An enterprise-level contract or a trial account (For Testing) for Adobe's API is required.
-    - [Adobe PDF Services API](https://acrobatservices.adobe.com/dc-integration-creation-app-cdn/main.html) to obtain API credentials.
-- **PDF-to-HTML**: AWS Bedrock Data Automation service access
-  - Ensure you have access to create a Bedrock Data Automation project - usually present by default
+Ensure your project has the following structure:
 
-### One-Click Deployment
-
-**Step 1: Open AWS CloudShell and Clone the Repository**
-
-```bash
-git clone https://github.com/ASUCICREPO/PDF_Accessibility.git
-cd PDF_Accessibility
-git checkout pdf2html-subtree  
+```
+├── app.py (Main CDK app)
+├── lambda/
+│   ├── split_pdf/ (Python Lambda for splitting PDF)
+│   └── java_lambda/ (Java Lambda for merging PDFs)
+├── docker_autotag/ (Python Docker image for ECS task)
+└── javascript_docker/ (JavaScript Docker image for ECS task)
+|__ client_credentials.json (The client id and client secret id for adobe)
 ```
 
-**Step 2: Run the Unified Deployment Script**
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
+## Setup and Deployment
 
-**Step 3: Follow the Interactive Prompts**
+1. **Clone the Repository**:
+   - Clone this repository containing the CDK code, Docker configurations, and Lambda functions.
+     
+2. **Set Up Your Environment**:
+   - Configure AWS CLI with your AWS account credentials:
+     ```bash
+     aws configure
+     ```
+   - Make sure the region is set to
+     ```
+     us-east-1
+     ```
+     
+3. **Set Up CDK Environment**:
+   - Bootstrap your AWS environment for CDK (run only once per AWS account/region):
+     ```
+     cdk bootstrap
+     ```
+     
+4. **Create Adobe API Credentials**:
+   - Create a file called `client_credentials.json` in the root directory with the following structure:
+     ```json
+     {
+       "client_credentials": {
+         "PDF_SERVICES_CLIENT_ID": "<Your client ID here>",
+         "PDF_SERVICES_CLIENT_SECRET": "<Your secret ID here>"
+       }
+     }
+     ```
+   - Replace <Your Client ID here> and <Your Secret ID here> with your actual Client ID and Client Secret provided by Adobe and not the whole file.
 
-The script will guide you through:
+5. **Upload Credentials to Secrets Manager**:
+   - Run this command in the terminal of the project to push the secret keys to secret manager:
+   - For Mac
+     ```
+     aws secretsmanager create-secret \
+         --name /myapp/client_credentials \
+         --description "Client credentials for PDF services" \
+         --secret-string file://client_credentials.json
+     ```
+   - For Windows
+     ```bash
+     aws secretsmanager create-secret --name /myapp/client_credentials --description "Client credentials for PDF services" --secret-string file://client_credentials.json
+     ```
+   - Run this command if you have already uploaded the keys earlier and would like to update the keys in secret manager.
+   - For Mac:
+     ```
+        aws secretsmanager update-secret \
+       --secret-id /myapp/client_credentials \
+       --description "Updated client credentials for PDF services" \
+       --secret-string file://client_credentials.json
+     ```
+   - For Windows:
+     ```bash
+     aws secretsmanager update-secret --secret-id /myapp/client_credentials --description "Updated client credentials for PDF services" --secret-string file://client_credentials.json
+     ```
+6. **Install the Requirements**:
+   - For both Mac and Windows
+   - ```bash
+     pip install -r requirements.txt
+     ```
+   
+8. **Connect to ECR**:
+   - Ensure Docker Desktop is running, then execute:
+     ```
+     aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+     ```
+  
+9. **Set a environment variable once for deployment**
+   - An environment variable needs to be set before deployment. This step ensures compatibility and prevents deployment issues.
+   - For additional guidance or if you encounter any deployment issues, please refer to [Troubleshooting](#troubleshooting) section.
+   - For Mac,
+     ```
+     export BUILDX_NO_DEFAULT_ATTESTATIONS=1   
+     ```
+   - For Windows,
+     ```
+     set BUILDX_NO_DEFAULT_ATTESTATIONS=1
+     ```
+  
+10. **Deploy the CDK Stack**:
+   - Deploy the stack to AWS:
+     ```
+     cdk deploy
+     ```
 
-1. **Solution Selection**: Choose between PDF-to-PDF or PDF-to-HTML remediation
-2. **Solution-Specific Setup**:
-   - **PDF-to-PDF**: Enter Adobe API credentials (stored securely in AWS Secrets Manager)
-   - **PDF-to-HTML**: Automatic creation of Bedrock Data Automation project
-3. **Automated Deployment**: Real-time monitoring of the deployment progress
-4. **Optional UI Deployment**: After successful deployment of your chosen solution(s), you'll have the option to deploy a user interface as well
+## Usage
 
-**Step 4: Test Your Deployment**
+Once the infrastructure is deployed:
 
-After successful deployment, the script provides specific testing instructions for your chosen solution.
-
-### Testing Your PDF Accessibility Solution
-
-#### PDF-to-PDF Solution Testing
-
-1. **Navigate to Your S3 Bucket**
-   - In the AWS S3 Console, find the bucket starting with `pdfaccessibility-`
-   - This bucket was automatically created during deployment
-
-2. **Create the Input Folder**
-   - Create a folder named `pdf/` in the root of the bucket
-   - This is where you'll upload PDFs for processing
-
-3. **Upload Your PDF Files**
-   - Upload any PDF file(s) to the `pdf/` folder
-   - **Bulk Processing**: You can upload multiple PDFs in the bucket for batch remediation
-   - The process automatically triggers when files are uploaded
-
-4. **Monitor Processing**
-   - **Temporary Files**: A `temp/` folder will be created containing intermediate processing files
-   - **Final Results**: A `result/` folder will be created with your accessibility-compliant PDF files
-   - Use the CloudWatch dashboard to monitor processing progress
-
-5. **Download Results**
-   - Navigate to the `result/` folder to access your remediated PDFs
-   - Files maintain their original names with "COMPLIANT" prefix after accessibility improvements applied
-
-#### PDF-to-HTML Solution Testing
-
-1. **Navigate to Your S3 Bucket**
-   - In the AWS S3 Console, find the bucket starting with `pdf2html-bucket-`
-   - This bucket was automatically created during deployment
-
-2. **Upload Your PDF Files**
-   - Navigate to the `uploads/` folder (created automatically during deployment)
-   - **Bulk Processing**: You can upload multiple PDFs in the bucket for batch remediation
-   - The process automatically triggers when files are uploaded
-
-3. **Monitor Processing**
-   - Two folders will be created automatically:
-     - **`output/`**: Contains temporary processing data and intermediate files
-     - **`remediated/`**: Contains the final remediated results
-
-4. **Access Your Results**
-   - Navigate to the `remediated/` folder
-   - Download the zip file named `final_{your-filename}.zip`
-
-5. **Explore the Remediated Content**
-   The downloaded zip file contains:
-   - **`remediated.html`**: Final accessibility-compliant HTML version
-   - **`result.html`**: Original HTML conversion (before remediation)
-   - **`images/` folder**: Extracted images with generated alt text
-   - **`remediation_report.html`**: Detailed report of accessibility improvements made
-   - **`usage_data.json`**: Processing metrics and usage statistics
-
-### Advanced Usage
-
-**Redeployment**
-After initial deployment, you can redeploy using the created CodeBuild project:
-```bash
-aws codebuild start-build --project-name YOUR-PROJECT-NAME --source-version pdf2html-subtree
-```
-Or simply re-run the deployment script and choose the solution your want redeploy.
-
-## PDF-to-PDF Remediation Solution
-
-### Overview
-
-This solution processes PDFs while maintaining the original PDF format. It uses AWS CDK to build infrastructure that splits PDFs into chunks, processes them via AWS Step Functions, and merges the results using ECS tasks.
-
-### Architecture
-
-- **S3 Bucket**: Stores input and processed PDFs
-- **Lambda Functions**: PDF splitting, merging, and accessibility checking
-- **Step Functions**: Orchestrates the processing workflow
-- **ECS Fargate**: Runs containerized processing tasks
-- **CloudWatch Dashboard**: Monitors progress and performance
-
-### Manual Deployment
-
-For detailed manual deployment instructions, see our [Manual Deployment Guide](docs/MANUAL_DEPLOYMENT.md).
-
-## PDF-to-HTML Remediation Solution
-
-### Overview
-
-This solution converts PDF documents to accessible HTML format while preserving layout and visual appearance. It leverages AWS Bedrock Data Automation for PDF parsing and uses a serverless Lambda architecture.
-
-### Architecture
-
-- **S3 Bucket**: Stores input PDFs and remediated HTML files
-- **Lambda Function**: Processes PDFs using containerized accessibility utility
-- **ECR Repository**: Hosts the Docker image for Lambda
-- **Bedrock Data Automation**: Provides PDF parsing and extraction capabilities
+1. Create a `pdf/` folder in the S3 bucket created by the CDK stack.
+2. Upload a PDF file to the `pdf/` folder in the S3 bucket.
+3. The process will automatically trigger and start processing the PDF.
 
 ## Monitoring
 
